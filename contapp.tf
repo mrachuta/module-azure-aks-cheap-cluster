@@ -9,13 +9,7 @@ resource "azurerm_user_assigned_identity" "contapp_managed_identity" {
     var.aks_custom_region :
     data.azurerm_resource_group.rg.location
   )
-  tags = merge(
-    {
-      "managed_by"  = "terraform"
-      "module_name" = "azure-aks-cheap-cluster"
-    },
-    var.extra_tags
-  )
+  tags = local.common_tags
 
 }
 
@@ -53,13 +47,7 @@ resource "azurerm_container_app_environment" "contapp" {
     var.aks_custom_region :
     data.azurerm_resource_group.rg.location
   )
-  tags = merge(
-    {
-      "managed_by"  = "terraform"
-      "module_name" = "azure-aks-cheap-cluster"
-    },
-    var.extra_tags
-  )
+  tags = local.common_tags
 
   workload_profile {
     name                  = "Consumption"
@@ -89,13 +77,7 @@ resource "azurerm_container_app_job" "contapp_config_job" {
     var.aks_custom_region :
     data.azurerm_resource_group.rg.location
   )
-  tags = merge(
-    {
-      "managed_by"  = "terraform"
-      "module_name" = "azure-aks-cheap-cluster"
-    },
-    var.extra_tags
-  )
+  tags = local.common_tags
 
   replica_timeout_in_seconds = 300
   replica_retry_limit        = 1

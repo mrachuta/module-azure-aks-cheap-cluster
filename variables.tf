@@ -70,12 +70,18 @@ variable "aks_outbound_type" {
   description = "Use simple AKS setup with loadBalancer or define different outboundType: userAssignedNATGateway or userDefinedRouting"
 }
 
+variable "aks_nodes_extra_tags" {
+  type        = map(string)
+  default     = {}
+  description = "Additional tags to be added to each node"
+}
+
 variable "aks_api_server_subnetwork_id" {
   type    = string
   default = null
   validation {
     condition     = can(var.aks_outbound_type != "loadBalancer" && var.aks_api_server_subnetwork_id == null)
-    error_message = "You need to provide ID of subnetwork, where nodes will be placed if you are using user managed output type for AKS"
+    error_message = "You need to provide ID of subnetwork, where nodes will be placed if you are using other AKS outbound type as loadBalancer"
   }
   description = "ID of subnetwork to use with AKS API server"
 }
@@ -85,7 +91,7 @@ variable "aks_node_pool_subnetwork_id" {
   default = null
   validation {
     condition     = can(var.aks_outbound_type != "loadBalancer" && var.aks_node_pool_subnetwork_id == null)
-    error_message = "You need to provide ID of subnetwork, where nodes will be placed if you are using user managed output type for AKS"
+    error_message = "You need to provide ID of subnetwork, where nodes will be placed if you are using other AKS outbound type as loadBalancer"
   }
   description = "ID of subnetwork to use with AKS nodes"
 }
@@ -120,7 +126,7 @@ variable "aks_spot_node_pool_config" {
     sku   = string
     count = number
   })
-  default = null
+  default     = null
   description = "Configure spot node pool details"
 }
 
@@ -188,10 +194,9 @@ variable "az_cli_path" {
 }
 
 variable "provisioner_arm_client_secret" {
-  type    = string
-  default = null
-  # Not required, bash is not expanding environment variables within provisioner
-  #sensitive   = true
+  type      = string
+  default   = null
+  sensitive = true
   validation {
     condition     = can(var.contapp_provision == true && var.provisioner_arm_client_secret == null)
     error_message = "Environment variable TF_VAR_provisioner_arm_client_secret is not set properly!"

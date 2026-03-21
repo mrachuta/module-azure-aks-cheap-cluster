@@ -23,13 +23,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     var.aks_custom_region :
     data.azurerm_resource_group.rg.location
   )
-  tags = merge(
-    {
-      "managed_by"  = "terraform"
-      "module_name" = "azure-aks-cheap-cluster"
-    },
-    var.extra_tags
-  )
+  tags = local.common_tags
 
   dns_prefix          = var.aks_name
   sku_tier            = "Free"
@@ -42,8 +36,8 @@ resource "azurerm_kubernetes_cluster" "aks" {
     network_plugin    = var.aks_outbound_type == "loadBalancer" ? "kubenet" : "azure"
     load_balancer_sku = var.aks_outbound_type == "loadBalancer" ? "standard" : null
     service_cidr      = var.aks_outbound_type == "loadBalancer" ? null : "172.29.0.0/16"
-    dns_service_ip = var.aks_outbound_type == "loadBalancer" ? null : "172.29.0.10"
-    outbound_type  = var.aks_outbound_type
+    dns_service_ip    = var.aks_outbound_type == "loadBalancer" ? null : "172.29.0.10"
+    outbound_type     = var.aks_outbound_type
   }
 
   dynamic "api_server_access_profile" {
@@ -53,7 +47,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
     content {
       authorized_ip_ranges                = var.aks_auth_ip_ranges
       virtual_network_integration_enabled = var.aks_outbound_type == "loadBalancer" ? null : true
-      subnet_id                           = var.aks_outbound_type == "loadBalancer" ? null : var.aks_api_server_subnetwork_id 
+      subnet_id                           = var.aks_outbound_type == "loadBalancer" ? null : var.aks_api_server_subnetwork_id
     }
   }
 
@@ -67,13 +61,11 @@ resource "azurerm_kubernetes_cluster" "aks" {
     auto_scaling_enabled        = false
     vnet_subnet_id              = var.aks_outbound_type == "loadBalancer" ? null : var.aks_node_pool_subnetwork_id
     tags = merge(
+      local.common_tags,
       {
-        "managed_by"               = "terraform"
-        "module_name"              = "azure-aks-cheap-cluster"
-        "node_pool_autoscale_tag"  = "${var.aks_name}-default-node-pool"
-        "skip-policy-PFMMGMT-5" = "true"
+        "node_pool_autoscale_tag" = "${var.aks_name}-default-node-pool"
       },
-      var.extra_tags
+      var.aks_nodes_extra_tags
     )
 
     upgrade_settings {
@@ -93,9 +85,10 @@ resource "azurerm_kubernetes_cluster" "aks" {
 
 resource "azurerm_kubernetes_cluster_node_pool" "aks_spot_node_pool" {
   count = (
-    var.aks_provision == true && 
-    var.aks_enable_spot_node_pool == true 
-  ) ? 1 : 0 
+    var.aks_provision == true &&
+    var.aks_enable_spot_node_pool == true &&
+    var.aks_spot_node_pool_config != null
+  ) ? 1 : 0
 
   name                        = var.aks_spot_node_pool_config.name
   temporary_name_for_rotation = "${var.aks_spot_node_pool_config.name}tmp"
@@ -107,13 +100,11 @@ resource "azurerm_kubernetes_cluster_node_pool" "aks_spot_node_pool" {
   os_disk_size_gb             = "32"
   vnet_subnet_id              = var.aks_node_pool_subnetwork_id
   tags = merge(
+    local.common_tags,
     {
-      "managed_by"               = "terraform"
-      "module_name"              = "azure-aks-cheap-cluster"
-      "node_pool_autoscale_tag"  = "${var.aks_name}-${var.aks_spot_node_pool_config.name}"
-      "skip-policy-PFMMGMT-5" = "true"
+      "node_pool_autoscale_tag" = "${var.aks_name}-${var.aks_spot_node_pool_config.name}"
     },
-    var.extra_tags
+    var.aks_nodes_extra_tags
   )
 
   lifecycle {
@@ -160,12 +151,10 @@ data "azurerm_resources" "aks_default_node_pool" {
   resource_group_name = var.aks_resources_rg_name
   type                = "Microsoft.Compute/virtualMachineScaleSets"
   required_tags = merge(
+    local.common_tags,
     {
-      "managed_by"              = "terraform"
-      "module_name"             = "azure-aks-cheap-cluster"
       "node_pool_autoscale_tag" = "${var.aks_name}-default-node-pool"
-    },
-    var.extra_tags
+    }
   )
 
   depends_on = [azurerm_kubernetes_cluster.aks]
@@ -181,13 +170,7 @@ resource "azurerm_monitor_autoscale_setting" "aks_default_node_pool_autoscaler" 
   name                = "${var.aks_name}-default-node-pool-autoscaler"
   resource_group_name = azurerm_kubernetes_cluster.aks[0].node_resource_group
   location            = azurerm_kubernetes_cluster.aks[0].location
-  tags = merge(
-    {
-      "managed_by"  = "terraform"
-      "module_name" = "azure-aks-cheap-cluster"
-    },
-    var.extra_tags
-  )
+  tags                = local.common_tags
 
   target_resource_id = data.azurerm_resources.aks_default_node_pool[0].resources[0].id
 
@@ -240,12 +223,10 @@ data "azurerm_resources" "aks_spot_node_pool" {
   resource_group_name = var.aks_resources_rg_name
   type                = "Microsoft.Compute/virtualMachineScaleSets"
   required_tags = merge(
+    local.common_tags,
     {
-      "managed_by"              = "terraform"
-      "module_name"             = "azure-aks-cheap-cluster"
       "node_pool_autoscale_tag" = "${var.aks_name}-${var.aks_spot_node_pool_config.name}"
-    },
-    var.extra_tags
+    }
   )
 
   depends_on = [
@@ -254,23 +235,18 @@ data "azurerm_resources" "aks_spot_node_pool" {
   ]
 }
 
-resource "azurerm_monitor_autoscale_setting" "aks_default_node_autoscaler" {
+resource "azurerm_monitor_autoscale_setting" "aks_spot_node_pool_autoscaler" {
   count = (
     var.aks_provision == true &&
-    var.aks_enable_default_node_pool_autoscaling_to_zero == true &&
-    var.aks_default_node_pool_autoscaling_to_zero_details != null
+    var.aks_enable_spot_node_pool_autoscaling == true &&
+    var.aks_spot_node_pool_autoscaling_details != null &&
+    var.aks_spot_node_pool_config != null
   ) ? 1 : 0
 
   name                = "${var.aks_name}-${var.aks_spot_node_pool_config.name}-autoscaler"
   resource_group_name = azurerm_kubernetes_cluster.aks[0].node_resource_group
   location            = azurerm_kubernetes_cluster.aks[0].location
-  tags = merge(
-    {
-      "managed_by"  = "terraform"
-      "module_name" = "azure-aks-cheap-cluster"
-    },
-    var.extra_tags
-  )
+  tags                = local.common_tags
 
   target_resource_id = data.azurerm_resources.aks_spot_node_pool[0].resources[0].id
 

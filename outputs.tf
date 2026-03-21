@@ -6,8 +6,8 @@ output "acr_address" {
   value = var.acr_provision == true ? azurerm_container_registry.acr[0].login_server : null
 }
 
-output "aks_cluster_name" {
-  value = var.acr_provision == true ? azurerm_kubernetes_cluster.aks[0].name : null
+output "aks_address" {
+  value = var.aks_provision == true ? azurerm_kubernetes_cluster.aks[0].fqdn : null
 }
 
 # TODO: to be fixed

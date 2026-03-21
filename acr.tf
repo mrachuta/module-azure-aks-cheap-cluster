@@ -11,13 +11,7 @@ resource "azurerm_container_registry" "acr" {
   sku           = "Basic"
   admin_enabled = false
 
-  tags = merge(
-    {
-      "managed_by"  = "terraform"
-      "module_name" = "azure-aks-cheap-cluster"
-    },
-    var.extra_tags
-  )
+  tags = local.common_tags
 }
 
 # Service principal has to be owner of RG or at least User Acces Admnistrator over RG
