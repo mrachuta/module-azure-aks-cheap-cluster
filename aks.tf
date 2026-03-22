@@ -29,8 +29,7 @@ resource "azurerm_kubernetes_cluster" "aks" {
   sku_tier            = "Free"
   node_resource_group = var.aks_resources_rg_name
 
-  #TODO: szyfrowanie dysku
-  #  disk_encryption_set_id = 
+  disk_encryption_set_id = var.aks_disk_encryption_set_id
 
   network_profile {
     network_plugin    = var.aks_outbound_type == "loadBalancer" ? "kubenet" : "azure"

@@ -108,6 +108,12 @@ variable "aks_node_count" {
   description = "Node count for default nodepool"
 }
 
+variable "aks_disk_encryption_set_id" {
+  type        = string
+  default     = null
+  description = "ID of the Disk Encryption Set to use for encrypting node disks"
+}
+
 variable "aks_node_sku" {
   type        = string
   default     = "Standard_B2s"
